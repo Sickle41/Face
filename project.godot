@@ -13,7 +13,12 @@ config_version=5
 config/name="WarmachineClient"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 config/icon="res://icon.svg"
+run/main_scene="res://Scenes/Startup/ConnectionTest.tscn"
 
 [dotnet]
 
 project/assembly_name="WarmachineClient"
+
+[autoload]
+
+ApiSettings="*res://Autoload/ApiSettings.cs"
