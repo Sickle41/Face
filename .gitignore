@@ -1,0 +1,10 @@
+# Godot 4+ specific ignores
+.godot/
+
+# .NET / C# build artifacts
+bin/
+obj/
+
+# OS
+.DS_Store
+Thumbs.db
