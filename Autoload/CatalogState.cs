@@ -7,4 +7,5 @@ public partial class CatalogState : Node
 {
     public Guid? SelectedFactionId { get; set; }
     public Guid? SelectedUnitId { get; set; }
+    public Guid? SelectedMapId { get; set; }
 }
