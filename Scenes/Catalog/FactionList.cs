@@ -13,6 +13,7 @@ public partial class FactionList : Control
 
     private LineEdit _searchInput = null!;
     private Button _searchButton = null!;
+    private Button _mainMenuButton = null!;
     private ItemList _list = null!;
     private Label _pageLabel = null!;
     private Button _prevButton = null!;
@@ -27,6 +28,7 @@ public partial class FactionList : Control
     {
         _searchInput = GetNode<LineEdit>("VBoxContainer/SearchRow/SearchInput");
         _searchButton = GetNode<Button>("VBoxContainer/SearchRow/SearchButton");
+        _mainMenuButton = GetNode<Button>("VBoxContainer/SearchRow/MainMenuButton");
         _list = GetNode<ItemList>("VBoxContainer/List");
         _pageLabel = GetNode<Label>("VBoxContainer/PageRow/PageLabel");
         _prevButton = GetNode<Button>("VBoxContainer/PageRow/PrevButton");
@@ -34,6 +36,7 @@ public partial class FactionList : Control
         _statusLabel = GetNode<Label>("VBoxContainer/StatusLabel");
         _apiSettings = GetNode<ApiSettings>("/root/ApiSettings");
 
+        _mainMenuButton.Pressed += () => GetTree().ChangeSceneToFile("res://Scenes/Main/MainMenu.tscn");
         _searchButton.Pressed += () => _ = LoadPage(1);
         _searchInput.TextSubmitted += text => _ = LoadPage(1);
         _prevButton.Pressed += () => _ = LoadPage(_page - 1);

@@ -22,7 +22,7 @@ script = ExtResource("3")
 offset_left = 16.0
 offset_top = 16.0
 offset_right = 266.0
-offset_bottom = 140.0
+offset_bottom = 180.0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="UI/Panel"]
 layout_mode = 1
@@ -47,4 +47,8 @@ text = "Load Map"
 [node name="StatusLabel" type="Label" parent="UI/Panel/VBoxContainer"]
 layout_mode = 2
 text = ""
+
+[node name="MainMenuButton" type="Button" parent="UI/Panel/VBoxContainer"]
+layout_mode = 2
+text = "< Main Menu"
 autowrap_mode = 3

@@ -13,7 +13,7 @@ config_version=5
 config/name="WarmachineClient"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 config/icon="res://icon.svg"
-run/main_scene="res://Scenes/Catalog/FactionList.tscn"
+run/main_scene="res://Scenes/Main/MainMenu.tscn"
 
 [dotnet]
 
