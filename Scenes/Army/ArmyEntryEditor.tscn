@@ -1,0 +1,78 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scenes/Army/ArmyEntryEditor.cs" id="1"]
+
+[node name="ArmyEntryEditor" type="PopupPanel"]
+script = ExtResource("1")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 392.0
+offset_bottom = 292.0
+
+[node name="UnitRow" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="UnitLabel" type="Label" parent="VBoxContainer/UnitRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+text = "Unit:"
+
+[node name="UnitOption" type="OptionButton" parent="VBoxContainer/UnitRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="QuantityRow" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="QuantityLabel" type="Label" parent="VBoxContainer/QuantityRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+text = "Quantity:"
+
+[node name="QuantityInput" type="SpinBox" parent="VBoxContainer/QuantityRow"]
+layout_mode = 2
+min_value = 1.0
+max_value = 20.0
+step = 1.0
+value = 1.0
+
+[node name="AttachmentRow" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="AttachmentLabel" type="Label" parent="VBoxContainer/AttachmentRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+text = "Attachment:"
+
+[node name="AttachmentOption" type="OptionButton" parent="VBoxContainer/AttachmentRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CasterRow" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="CasterLabel" type="Label" parent="VBoxContainer/CasterRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+text = "Battlegroup Caster:"
+
+[node name="CasterOption" type="OptionButton" parent="VBoxContainer/CasterRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ButtonRow" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="SaveButton" type="Button" parent="VBoxContainer/ButtonRow"]
+layout_mode = 2
+text = "Save"
+
+[node name="CancelButton" type="Button" parent="VBoxContainer/ButtonRow"]
+layout_mode = 2
+text = "Cancel"
+
+[node name="StatusLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = ""

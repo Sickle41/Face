@@ -20,10 +20,21 @@ public partial class ArmyEditor : Control
     private Button _backButton = null!;
     private Label _statusLabel = null!;
 
+    private Control _entriesSection = null!;
+    private ItemList _entriesList = null!;
+    private Button _addEntryButton = null!;
+    private Button _removeEntryButton = null!;
+    private Label _entriesStatusLabel = null!;
+    private ArmyEntryEditor _entryEditor = null!;
+
     private ApiSettings _apiSettings = null!;
     private CatalogState _catalogState = null!;
 
     private List<Dto.Faction> _factions = new();
+    private List<Dto.UnitDefinition> _factionUnits = new();
+    private List<Dto.ArmyEntry> _entries = new();
+    private readonly Dictionary<Guid, string> _attachmentNames = new();
+    private readonly HashSet<Guid> _attachmentsFetchedForUnit = new();
     private Dto.Army? _army;
 
     public override void _Ready()
@@ -36,12 +47,24 @@ public partial class ArmyEditor : Control
         _deleteButton = GetNode<Button>("VBoxContainer/ButtonRow/DeleteButton");
         _backButton = GetNode<Button>("VBoxContainer/ButtonRow/BackButton");
         _statusLabel = GetNode<Label>("VBoxContainer/StatusLabel");
+
+        _entriesSection = GetNode<Control>("VBoxContainer/EntriesSection");
+        _entriesList = GetNode<ItemList>("VBoxContainer/EntriesSection/EntriesList");
+        _addEntryButton = GetNode<Button>("VBoxContainer/EntriesSection/EntryButtonRow/AddEntryButton");
+        _removeEntryButton = GetNode<Button>("VBoxContainer/EntriesSection/EntryButtonRow/RemoveEntryButton");
+        _entriesStatusLabel = GetNode<Label>("VBoxContainer/EntriesSection/EntriesStatusLabel");
+        _entryEditor = GetNode<ArmyEntryEditor>("EntryEditorPopup");
+
         _apiSettings = GetNode<ApiSettings>("/root/ApiSettings");
         _catalogState = GetNode<CatalogState>("/root/CatalogState");
 
         _saveButton.Pressed += () => _ = Save();
         _deleteButton.Pressed += () => _ = Delete();
         _backButton.Pressed += () => GetTree().ChangeSceneToFile("res://Scenes/Army/ArmyList.tscn");
+        _addEntryButton.Pressed += OnAddEntryPressed;
+        _removeEntryButton.Pressed += () => _ = RemoveSelectedEntry();
+        _entriesList.ItemActivated += OnEntryActivated;
+        _entryEditor.Connect(ArmyEntryEditor.SignalName.Saved, Callable.From(() => _ = LoadEntries()));
 
         _ = Load();
     }
@@ -76,11 +99,14 @@ public partial class ArmyEditor : Control
                 }
 
                 _deleteButton.Visible = true;
+                _entriesSection.Visible = true;
+                await LoadEntries();
             }
             else
             {
                 _titleLabel.Text = "New army";
                 _deleteButton.Visible = false;
+                _entriesSection.Visible = false;
             }
 
             _statusLabel.Text = string.Empty;
@@ -88,6 +114,120 @@ public partial class ArmyEditor : Control
         catch (Exception ex)
         {
             _statusLabel.Text = $"Failed: {ex.Message}";
+        }
+    }
+
+    private async Task LoadEntries()
+    {
+        if (_army is null)
+        {
+            return;
+        }
+
+        _entriesStatusLabel.Text = "Loading entries...";
+        try
+        {
+            var unitsResult = await _apiSettings.Client.GetAsync<Dto.PagedResult<Dto.UnitDefinition>>(
+                $"/api/units?factionId={_army.FactionId}&pageSize=200");
+            _factionUnits = unitsResult.Items;
+
+            _entries = await _apiSettings.Client.GetAsync<List<Dto.ArmyEntry>>(
+                $"/api/armies/{_army.Id}/entries");
+
+            _entriesList.Clear();
+            foreach (var entry in _entries)
+            {
+                var unitName = _factionUnits.FirstOrDefault(u => u.Id == entry.UnitDefinitionId)?.Name ?? "Unknown";
+                var label = $"{entry.Quantity}x {unitName}";
+
+                if (entry.UnitAttachmentId.HasValue)
+                {
+                    var attachmentName = await ResolveAttachmentName(entry.UnitDefinitionId, entry.UnitAttachmentId.Value);
+                    label += $" [+{attachmentName}]";
+                }
+
+                if (entry.BattlegroupCasterEntryId.HasValue)
+                {
+                    var casterEntry = _entries.FirstOrDefault(e => e.Id == entry.BattlegroupCasterEntryId.Value);
+                    var casterUnitName = casterEntry is not null
+                        ? _factionUnits.FirstOrDefault(u => u.Id == casterEntry.UnitDefinitionId)?.Name ?? "Unknown"
+                        : "Unknown";
+                    label += $" [battlegroup: {casterUnitName}]";
+                }
+
+                _entriesList.AddItem(label);
+            }
+
+            _entriesStatusLabel.Text = _entries.Count == 0 ? "No entries yet." : string.Empty;
+        }
+        catch (Exception ex)
+        {
+            _entriesStatusLabel.Text = $"Failed: {ex.Message}";
+        }
+    }
+
+    private async Task<string> ResolveAttachmentName(Guid unitId, Guid attachmentId)
+    {
+        if (_attachmentNames.TryGetValue(attachmentId, out var cached))
+        {
+            return cached;
+        }
+
+        if (!_attachmentsFetchedForUnit.Contains(unitId))
+        {
+            var attachments = await _apiSettings.Client.GetAsync<List<Dto.UnitAttachment>>(
+                $"/api/units/{unitId}/attachments");
+            foreach (var attachment in attachments)
+            {
+                _attachmentNames[attachment.Id] = attachment.Name;
+            }
+
+            _attachmentsFetchedForUnit.Add(unitId);
+        }
+
+        return _attachmentNames.TryGetValue(attachmentId, out var name) ? name : "Unknown";
+    }
+
+    private void OnAddEntryPressed()
+    {
+        if (_army is null)
+        {
+            return;
+        }
+
+        _entryEditor.Configure(_army.Id, _factionUnits, _entries, existingEntry: null);
+        _entryEditor.PopupCentered(new Vector2I(420, 320));
+    }
+
+    private void OnEntryActivated(long index)
+    {
+        if (_army is null)
+        {
+            return;
+        }
+
+        var entry = _entries[(int)index];
+        _entryEditor.Configure(_army.Id, _factionUnits, _entries, entry);
+        _entryEditor.PopupCentered(new Vector2I(420, 320));
+    }
+
+    private async Task RemoveSelectedEntry()
+    {
+        var selected = _entriesList.GetSelectedItems();
+        if (selected.Length == 0 || _army is null)
+        {
+            return;
+        }
+
+        var entry = _entries[selected[0]];
+        try
+        {
+            await _apiSettings.Client.DeleteAsync($"/api/army-entries/{entry.Id}");
+            await LoadEntries();
+        }
+        catch (Exception ex)
+        {
+            _entriesStatusLabel.Text = $"Failed: {ex.Message}";
         }
     }
 
@@ -124,7 +264,9 @@ public partial class ArmyEditor : Control
                 _catalogState.SelectedArmyId = created.Id;
                 _titleLabel.Text = $"Editing: {created.Name}";
                 _deleteButton.Visible = true;
+                _entriesSection.Visible = true;
                 _statusLabel.Text = "Created.";
+                await LoadEntries();
             }
             else
             {
