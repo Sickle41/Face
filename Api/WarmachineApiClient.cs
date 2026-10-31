@@ -47,6 +47,12 @@ public class WarmachineApiClient
         return await DeserializeAsync<T>(response);
     }
 
+    public async Task PostAsync(string path)
+    {
+        using var response = await _http.PostAsync(path, content: null);
+        await EnsureSuccessAsync(response);
+    }
+
     public async Task PutAsync(string path, object body)
     {
         using var response = await _http.PutAsync(path, ToJsonContent(body));
