@@ -77,6 +77,10 @@ text = "Save"
 layout_mode = 2
 text = "Delete"
 
+[node name="ExportButton" type="Button" parent="VBoxContainer/ButtonRow"]
+layout_mode = 2
+text = "Export"
+
 [node name="BackButton" type="Button" parent="VBoxContainer/ButtonRow"]
 layout_mode = 2
 text = "< Back"
@@ -110,6 +114,22 @@ text = "Remove Selected"
 
 [node name="EntriesStatusLabel" type="Label" parent="VBoxContainer/EntriesSection"]
 layout_mode = 2
+text = ""
+
+[node name="PointsSummaryLabel" type="Label" parent="VBoxContainer/EntriesSection"]
+layout_mode = 2
+text = ""
+
+[node name="BattlegroupsHeader" type="HBoxContainer" parent="VBoxContainer/EntriesSection"]
+layout_mode = 2
+
+[node name="ToggleBattlegroupsButton" type="Button" parent="VBoxContainer/EntriesSection/BattlegroupsHeader"]
+layout_mode = 2
+text = "Battlegroups ▸"
+
+[node name="BattlegroupsContent" type="Label" parent="VBoxContainer/EntriesSection"]
+layout_mode = 2
+visible = false
 text = ""
 
 [node name="EntryEditorPopup" parent="." instance=ExtResource("2")]

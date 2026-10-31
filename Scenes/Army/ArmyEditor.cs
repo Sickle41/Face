@@ -26,6 +26,10 @@ public partial class ArmyEditor : Control
     private Button _removeEntryButton = null!;
     private Label _entriesStatusLabel = null!;
     private ArmyEntryEditor _entryEditor = null!;
+    private Button _exportButton = null!;
+    private Label _pointsSummaryLabel = null!;
+    private Button _battlegroupsToggleButton = null!;
+    private Label _battlegroupsContentLabel = null!;
 
     private ApiSettings _apiSettings = null!;
     private CatalogState _catalogState = null!;
@@ -54,6 +58,10 @@ public partial class ArmyEditor : Control
         _removeEntryButton = GetNode<Button>("VBoxContainer/EntriesSection/EntryButtonRow/RemoveEntryButton");
         _entriesStatusLabel = GetNode<Label>("VBoxContainer/EntriesSection/EntriesStatusLabel");
         _entryEditor = GetNode<ArmyEntryEditor>("EntryEditorPopup");
+        _exportButton = GetNode<Button>("VBoxContainer/ButtonRow/ExportButton");
+        _pointsSummaryLabel = GetNode<Label>("VBoxContainer/EntriesSection/PointsSummaryLabel");
+        _battlegroupsToggleButton = GetNode<Button>("VBoxContainer/EntriesSection/BattlegroupsHeader/ToggleBattlegroupsButton");
+        _battlegroupsContentLabel = GetNode<Label>("VBoxContainer/EntriesSection/BattlegroupsContent");
 
         _apiSettings = GetNode<ApiSettings>("/root/ApiSettings");
         _catalogState = GetNode<CatalogState>("/root/CatalogState");
@@ -65,6 +73,14 @@ public partial class ArmyEditor : Control
         _removeEntryButton.Pressed += () => _ = RemoveSelectedEntry();
         _entriesList.ItemActivated += OnEntryActivated;
         _entryEditor.Connect(ArmyEntryEditor.SignalName.Saved, Callable.From(() => _ = LoadEntries()));
+        _exportButton.Pressed += () => GetTree().ChangeSceneToFile("res://Scenes/Army/ArmyExportView.tscn");
+        _battlegroupsToggleButton.Pressed += () =>
+        {
+            _battlegroupsContentLabel.Visible = !_battlegroupsContentLabel.Visible;
+            _battlegroupsToggleButton.Text = _battlegroupsContentLabel.Visible
+                ? "Battlegroups ▾"
+                : "Battlegroups ▸";
+        };
 
         _ = Load();
     }
@@ -159,10 +175,72 @@ public partial class ArmyEditor : Control
             }
 
             _entriesStatusLabel.Text = _entries.Count == 0 ? "No entries yet." : string.Empty;
+
+            await RefreshPointsSummary();
+            await RefreshBattlegroups();
         }
         catch (Exception ex)
         {
             _entriesStatusLabel.Text = $"Failed: {ex.Message}";
+        }
+    }
+
+    private async Task RefreshPointsSummary()
+    {
+        if (_army is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var summary = await _apiSettings.Client.GetAsync<Dto.ArmyPointsSummary>(
+                $"/api/armies/{_army.Id}/points-summary");
+            _pointsSummaryLabel.Text = $"{summary.TotalPoints} / {summary.PointLimit} pts";
+
+            if (summary.IsOverLimit)
+            {
+                _pointsSummaryLabel.AddThemeColorOverride("font_color", new Color(1f, 0.3f, 0.3f));
+            }
+            else
+            {
+                _pointsSummaryLabel.RemoveThemeColorOverride("font_color");
+            }
+        }
+        catch (Exception ex)
+        {
+            _pointsSummaryLabel.Text = $"Failed: {ex.Message}";
+        }
+    }
+
+    private async Task RefreshBattlegroups()
+    {
+        if (_army is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var battlegroups = await _apiSettings.Client.GetAsync<List<Dto.Battlegroup>>(
+                $"/api/armies/{_army.Id}/battlegroups");
+
+            var lines = new List<string>();
+            foreach (var group in battlegroups)
+            {
+                var casterName = group.Caster is not null
+                    ? _factionUnits.FirstOrDefault(u => u.Id == group.Caster.UnitDefinitionId)?.Name ?? "Unknown"
+                    : "No caster";
+                var memberNames = group.Members.Select(m =>
+                    _factionUnits.FirstOrDefault(u => u.Id == m.UnitDefinitionId)?.Name ?? "Unknown");
+                lines.Add($"{casterName}: {string.Join(", ", memberNames)}");
+            }
+
+            _battlegroupsContentLabel.Text = lines.Count == 0 ? "(none)" : string.Join("\n", lines);
+        }
+        catch (Exception ex)
+        {
+            _battlegroupsContentLabel.Text = $"Failed: {ex.Message}";
         }
     }
 
@@ -286,6 +364,7 @@ public partial class ArmyEditor : Control
                 _army = await _apiSettings.Client.GetAsync<Dto.Army>($"/api/armies/{_army.Id}");
                 _titleLabel.Text = $"Editing: {_army.Name}";
                 _statusLabel.Text = "Saved.";
+                await RefreshPointsSummary();
             }
         }
         catch (ApiException ex) when (ex.Status == 409)
