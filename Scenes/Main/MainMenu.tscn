@@ -30,6 +30,10 @@ horizontal_alignment = 1
 layout_mode = 2
 text = "Catalog Browser"
 
+[node name="ArmiesButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Armies"
+
 [node name="MapsButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2
 text = "Maps"
