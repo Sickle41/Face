@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://Scenes/Army/ArmyEditor.cs" id="1"]
+[ext_resource type="PackedScene" path="res://Scenes/Army/ArmyEntryEditor.tscn" id="2"]
 
 [node name="ArmyEditor" type="Control"]
 layout_mode = 3
@@ -83,3 +84,32 @@ text = "< Back"
 [node name="StatusLabel" type="Label" parent="VBoxContainer"]
 layout_mode = 2
 text = ""
+
+[node name="EntriesSection" type="VBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="EntriesLabel" type="Label" parent="VBoxContainer/EntriesSection"]
+layout_mode = 2
+text = "Army Entries"
+
+[node name="EntriesList" type="ItemList" parent="VBoxContainer/EntriesSection"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="EntryButtonRow" type="HBoxContainer" parent="VBoxContainer/EntriesSection"]
+layout_mode = 2
+
+[node name="AddEntryButton" type="Button" parent="VBoxContainer/EntriesSection/EntryButtonRow"]
+layout_mode = 2
+text = "Add Entry"
+
+[node name="RemoveEntryButton" type="Button" parent="VBoxContainer/EntriesSection/EntryButtonRow"]
+layout_mode = 2
+text = "Remove Selected"
+
+[node name="EntriesStatusLabel" type="Label" parent="VBoxContainer/EntriesSection"]
+layout_mode = 2
+text = ""
+
+[node name="EntryEditorPopup" parent="." instance=ExtResource("2")]
