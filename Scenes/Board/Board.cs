@@ -13,6 +13,9 @@ public partial class Board : Node2D
     [Signal]
     public delegate void SelectionChangedEventHandler();
 
+    [Signal]
+    public delegate void BoardStateChangedEventHandler();
+
     public const float PixelsPerUnit = 0.5f;
 
     private static readonly PackedScene TerrainFeatureScene =
@@ -46,6 +49,9 @@ public partial class Board : Node2D
     private ModelInstanceView? _selectedModelView;
 
     public Guid? SelectedModelInstanceId => _selectedModelView?.ModelId;
+    public GameSession? Session => _session;
+    public IReadOnlyList<GameParticipant> Participants => _participants;
+    public IReadOnlyList<ModelInstance> ModelInstances => _modelInstances;
 
     public override void _Ready()
     {
@@ -189,6 +195,34 @@ public partial class Board : Node2D
             view.SetModel(model, unit, color);
             view.Connect(ModelInstanceView.SignalName.Selected, Callable.From<ModelInstanceView>(OnModelViewSelected));
         }
+
+        EmitSignal(SignalName.BoardStateChanged);
+    }
+
+    public async Task RefreshSession()
+    {
+        if (_session is null)
+        {
+            return;
+        }
+
+        _session = await _apiSettings.Client.GetAsync<GameSession>($"/api/sessions/{_session.Id}");
+        EmitSignal(SignalName.BoardStateChanged);
+    }
+
+    public string GetArmyName(Guid armyId) => _armyNames.TryGetValue(armyId, out var name) ? name : "Unknown";
+
+    public string GetModelLabel(Guid modelId)
+    {
+        var model = _modelInstances.FirstOrDefault(m => m.Id == modelId);
+        if (model is null ||
+            !_entriesById.TryGetValue(model.ArmyEntryId, out var entry) ||
+            !_unitsById.TryGetValue(entry.UnitDefinitionId, out var unit))
+        {
+            return "Unknown";
+        }
+
+        return $"{GetArmyName(entry.ArmyId)}: {unit.Name}";
     }
 
     private void OnModelViewSelected(ModelInstanceView view)
