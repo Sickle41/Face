@@ -39,6 +39,9 @@ public partial class Board : Node2D
     private readonly Dictionary<Guid, UnitDefinition> _unitsById = new();
     private readonly Dictionary<Guid, Color> _armyColors = new();
     private List<ModelInstance> _modelInstances = new();
+    private ModelInstanceView? _selectedModelView;
+
+    public Guid? SelectedModelInstanceId => _selectedModelView?.ModelId;
 
     public override void _Ready()
     {
@@ -157,6 +160,8 @@ public partial class Board : Node2D
             child.QueueFree();
         }
 
+        _selectedModelView = null;
+
         foreach (var model in _modelInstances)
         {
             if (!_entriesById.TryGetValue(model.ArmyEntryId, out var entry) ||
@@ -169,7 +174,20 @@ public partial class Board : Node2D
             var view = ModelInstanceScene.Instantiate<ModelInstanceView>();
             _models.AddChild(view);
             view.SetModel(model, unit, color);
+            view.Connect(ModelInstanceView.SignalName.Selected, Callable.From<ModelInstanceView>(OnModelViewSelected));
         }
+    }
+
+    private void OnModelViewSelected(ModelInstanceView view)
+    {
+        if (_selectedModelView == view)
+        {
+            return;
+        }
+
+        _selectedModelView?.SetSelected(false);
+        _selectedModelView = view;
+        _selectedModelView.SetSelected(true);
     }
 
     private void ApplyFeatures(List<TerrainFeature> terrain, List<DeploymentZone> zones)

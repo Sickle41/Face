@@ -66,6 +66,12 @@ public class WarmachineApiClient
         return await DeserializeAsync<T>(response);
     }
 
+    public async Task PatchAsync(string path, object body)
+    {
+        using var response = await _http.PatchAsync(path, ToJsonContent(body));
+        await EnsureSuccessAsync(response);
+    }
+
     public async Task DeleteAsync(string path)
     {
         using var response = await _http.DeleteAsync(path);
