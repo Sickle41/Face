@@ -9,6 +9,7 @@ public partial class BoardTestHarness : CanvasLayer
 {
     private LineEdit _mapIdInput = null!;
     private Button _loadButton = null!;
+    private Button _spawnModelsButton = null!;
     private Button _mainMenuButton = null!;
     private Label _statusLabel = null!;
     private Board _board = null!;
@@ -17,15 +18,26 @@ public partial class BoardTestHarness : CanvasLayer
     {
         _mapIdInput = GetNode<LineEdit>("Panel/VBoxContainer/MapIdInput");
         _loadButton = GetNode<Button>("Panel/VBoxContainer/LoadButton");
+        _spawnModelsButton = GetNode<Button>("Panel/VBoxContainer/SpawnModelsButton");
         _mainMenuButton = GetNode<Button>("Panel/VBoxContainer/MainMenuButton");
         _statusLabel = GetNode<Label>("Panel/VBoxContainer/StatusLabel");
         _board = GetParent<Board>();
 
         _loadButton.Pressed += OnLoadButtonPressed;
+        _spawnModelsButton.Pressed += () => _ = SpawnModels();
         _mainMenuButton.Pressed += () => GetTree().ChangeSceneToFile("res://Scenes/Main/MainMenu.tscn");
 
+        CallDeferred(nameof(AutoLoadFromCatalogState));
+    }
+
+    private void AutoLoadFromCatalogState()
+    {
         var catalogState = GetNode<CatalogState>("/root/CatalogState");
-        if (catalogState.SelectedMapId.HasValue)
+        if (catalogState.SelectedSessionId.HasValue)
+        {
+            _ = LoadSession(catalogState.SelectedSessionId.Value);
+        }
+        else if (catalogState.SelectedMapId.HasValue)
         {
             var mapId = catalogState.SelectedMapId.Value;
             _mapIdInput.Text = mapId.ToString();
@@ -61,6 +73,42 @@ public partial class BoardTestHarness : CanvasLayer
         finally
         {
             _loadButton.Disabled = false;
+        }
+    }
+
+    private async Task LoadSession(Guid sessionId)
+    {
+        _statusLabel.Text = "Loading session...";
+        try
+        {
+            await _board.LoadSession(sessionId);
+            _mapIdInput.Text = string.Empty;
+            _spawnModelsButton.Visible = true;
+            _statusLabel.Text = "Session loaded.";
+        }
+        catch (Exception ex)
+        {
+            _statusLabel.Text = $"Failed: {ex.Message}";
+        }
+    }
+
+    private async Task SpawnModels()
+    {
+        _statusLabel.Text = "Spawning...";
+        _spawnModelsButton.Disabled = true;
+
+        try
+        {
+            await _board.SpawnMissingModels();
+            _statusLabel.Text = "Models spawned.";
+        }
+        catch (Exception ex)
+        {
+            _statusLabel.Text = $"Failed: {ex.Message}";
+        }
+        finally
+        {
+            _spawnModelsButton.Disabled = false;
         }
     }
 }

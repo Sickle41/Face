@@ -66,6 +66,10 @@ size_flags_vertical = 3
 layout_mode = 2
 text = ""
 
+[node name="PlayButton" type="Button" parent="VBoxContainer/DetailSection"]
+layout_mode = 2
+text = "Play"
+
 [node name="ResetActivationsButton" type="Button" parent="VBoxContainer/DetailSection"]
 layout_mode = 2
 text = "Reset Activations"
