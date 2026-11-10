@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 using WarmachineClient.Autoload;
@@ -15,17 +16,36 @@ public partial class Board : Node2D
         GD.Load<PackedScene>("res://Scenes/Board/TerrainFeatureView.tscn");
     private static readonly PackedScene DeploymentZoneScene =
         GD.Load<PackedScene>("res://Scenes/Board/DeploymentZoneView.tscn");
+    private static readonly PackedScene ModelInstanceScene =
+        GD.Load<PackedScene>("res://Scenes/Board/ModelInstanceView.tscn");
+
+    private static readonly Color[] ParticipantColors =
+    {
+        new(0.85f, 0.2f, 0.2f),
+        new(0.2f, 0.4f, 0.85f),
+        new(0.2f, 0.75f, 0.3f),
+        new(0.85f, 0.75f, 0.2f)
+    };
 
     private Polygon2D _background = null!;
     private Camera2D _camera = null!;
     private Node2D _features = null!;
+    private Node2D _models = null!;
     private ApiSettings _apiSettings = null!;
+
+    private GameSession? _session;
+    private List<GameParticipant> _participants = new();
+    private readonly Dictionary<Guid, ArmyEntry> _entriesById = new();
+    private readonly Dictionary<Guid, UnitDefinition> _unitsById = new();
+    private readonly Dictionary<Guid, Color> _armyColors = new();
+    private List<ModelInstance> _modelInstances = new();
 
     public override void _Ready()
     {
         _background = GetNode<Polygon2D>("Background");
         _camera = GetNode<Camera2D>("Camera");
         _features = GetNode<Node2D>("Features");
+        _models = GetNode<Node2D>("Models");
         _apiSettings = GetNode<ApiSettings>("/root/ApiSettings");
     }
 
@@ -37,6 +57,119 @@ public partial class Board : Node2D
         var terrain = await _apiSettings.Client.GetAsync<List<TerrainFeature>>($"/api/maps/{mapId}/terrain");
         var zones = await _apiSettings.Client.GetAsync<List<DeploymentZone>>($"/api/maps/{mapId}/deployment-zones");
         ApplyFeatures(terrain, zones);
+    }
+
+    public async Task LoadSession(Guid sessionId)
+    {
+        _session = await _apiSettings.Client.GetAsync<GameSession>($"/api/sessions/{sessionId}");
+        await LoadMap(_session.MapId);
+
+        _participants = await _apiSettings.Client.GetAsync<List<GameParticipant>>(
+            $"/api/sessions/{sessionId}/participants");
+
+        _entriesById.Clear();
+        _unitsById.Clear();
+        _armyColors.Clear();
+
+        var colorIndex = 0;
+        foreach (var participant in _participants)
+        {
+            _armyColors[participant.ArmyId] = ParticipantColors[colorIndex % ParticipantColors.Length];
+            colorIndex++;
+
+            var entries = await _apiSettings.Client.GetAsync<List<ArmyEntry>>(
+                $"/api/armies/{participant.ArmyId}/entries");
+            foreach (var entry in entries)
+            {
+                _entriesById[entry.Id] = entry;
+
+                if (!_unitsById.ContainsKey(entry.UnitDefinitionId))
+                {
+                    var unit = await _apiSettings.Client.GetAsync<UnitDefinition>(
+                        $"/api/units/{entry.UnitDefinitionId}");
+                    _unitsById[entry.UnitDefinitionId] = unit;
+                }
+            }
+        }
+
+        await RefreshModels();
+    }
+
+    public async Task SpawnMissingModels()
+    {
+        if (_session is null)
+        {
+            return;
+        }
+
+        var spawnIndex = 0;
+        foreach (var participant in _participants)
+        {
+            var entries = _entriesById.Values.Where(e => e.ArmyId == participant.ArmyId);
+            foreach (var entry in entries)
+            {
+                var existingCount = _modelInstances.Count(m => m.ArmyEntryId == entry.Id);
+                var missing = entry.Quantity - existingCount;
+                if (missing <= 0 || !_unitsById.TryGetValue(entry.UnitDefinitionId, out var unit))
+                {
+                    continue;
+                }
+
+                for (var i = 0; i < missing; i++)
+                {
+                    var damageGrid = unit.DamageColumns
+                        .Select(column => new DamageColumnState { Name = column.Name, BoxesFilled = 0 })
+                        .ToList();
+
+                    await _apiSettings.Client.PostAsync<ModelInstance>(
+                        $"/api/sessions/{_session.Id}/models", new
+                        {
+                            armyEntryId = entry.Id,
+                            x = 100 + spawnIndex % 6 * 150,
+                            y = 100 + spawnIndex / 6 * 150,
+                            facing = 0,
+                            damageTaken = 0,
+                            isDestroyed = false,
+                            statusEffects = new List<StatusEffect>(),
+                            damageGrid
+                        });
+
+                    spawnIndex++;
+                }
+            }
+        }
+
+        await RefreshModels();
+    }
+
+    private async Task RefreshModels()
+    {
+        if (_session is null)
+        {
+            return;
+        }
+
+        _modelInstances = await _apiSettings.Client.GetAsync<List<ModelInstance>>(
+            $"/api/sessions/{_session.Id}/models");
+
+        foreach (var child in _models.GetChildren())
+        {
+            child.QueueFree();
+        }
+
+        foreach (var model in _modelInstances)
+        {
+            if (!_entriesById.TryGetValue(model.ArmyEntryId, out var entry) ||
+                !_unitsById.TryGetValue(entry.UnitDefinitionId, out var unit))
+            {
+                continue;
+            }
+
+            var color = _armyColors.TryGetValue(entry.ArmyId, out var armyColor) ? armyColor : Colors.Gray;
+            var view = ModelInstanceScene.Instantiate<ModelInstanceView>();
+            _models.AddChild(view);
+            view.SetModel(model, unit, color);
+        }
     }
 
     private void ApplyFeatures(List<TerrainFeature> terrain, List<DeploymentZone> zones)

@@ -19,6 +19,7 @@ public partial class SessionDetail : Control
 
     private Control _detailSection = null!;
     private Label _infoLabel = null!;
+    private Button _playButton = null!;
     private Button _resetActivationsButton = null!;
     private ItemList _participantsList = null!;
     private OptionButton _armyOption = null!;
@@ -51,6 +52,7 @@ public partial class SessionDetail : Control
 
         _detailSection = GetNode<Control>("VBoxContainer/DetailSection");
         _infoLabel = GetNode<Label>("VBoxContainer/DetailSection/InfoLabel");
+        _playButton = GetNode<Button>("VBoxContainer/DetailSection/PlayButton");
         _resetActivationsButton = GetNode<Button>("VBoxContainer/DetailSection/ResetActivationsButton");
         _participantsList = GetNode<ItemList>("VBoxContainer/DetailSection/ParticipantsList");
         _armyOption = GetNode<OptionButton>("VBoxContainer/DetailSection/AddParticipantRow/ArmyOption");
@@ -66,6 +68,7 @@ public partial class SessionDetail : Control
         _catalogState = GetNode<CatalogState>("/root/CatalogState");
 
         _createButton.Pressed += () => _ = CreateSession();
+        _playButton.Pressed += OnPlayPressed;
         _resetActivationsButton.Pressed += () => _ = ResetActivations();
         _addParticipantButton.Pressed += () => _ = AddParticipant();
         _removeParticipantButton.Pressed += () => _ = RemoveSelectedParticipant();
@@ -219,6 +222,17 @@ public partial class SessionDetail : Control
         {
             _createButton.Disabled = false;
         }
+    }
+
+    private void OnPlayPressed()
+    {
+        if (_session is null)
+        {
+            return;
+        }
+
+        _catalogState.SelectedMapId = _session.MapId;
+        GetTree().ChangeSceneToFile("res://Scenes/Board/Board.tscn");
     }
 
     private async Task ResetActivations()
