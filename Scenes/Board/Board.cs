@@ -10,6 +10,9 @@ namespace WarmachineClient.Scenes.Board;
 
 public partial class Board : Node2D
 {
+    [Signal]
+    public delegate void SelectionChangedEventHandler();
+
     public const float PixelsPerUnit = 0.5f;
 
     private static readonly PackedScene TerrainFeatureScene =
@@ -38,6 +41,7 @@ public partial class Board : Node2D
     private readonly Dictionary<Guid, ArmyEntry> _entriesById = new();
     private readonly Dictionary<Guid, UnitDefinition> _unitsById = new();
     private readonly Dictionary<Guid, Color> _armyColors = new();
+    private readonly Dictionary<Guid, string> _armyNames = new();
     private List<ModelInstance> _modelInstances = new();
     private ModelInstanceView? _selectedModelView;
 
@@ -73,12 +77,20 @@ public partial class Board : Node2D
         _entriesById.Clear();
         _unitsById.Clear();
         _armyColors.Clear();
+        _armyNames.Clear();
 
         var colorIndex = 0;
         foreach (var participant in _participants)
         {
             _armyColors[participant.ArmyId] = ParticipantColors[colorIndex % ParticipantColors.Length];
             colorIndex++;
+
+            if (!_armyNames.ContainsKey(participant.ArmyId))
+            {
+                var army = await _apiSettings.Client.GetAsync<WarmachineClient.Api.Dto.Army>(
+                    $"/api/armies/{participant.ArmyId}");
+                _armyNames[participant.ArmyId] = army.Name;
+            }
 
             var entries = await _apiSettings.Client.GetAsync<List<ArmyEntry>>(
                 $"/api/armies/{participant.ArmyId}/entries");
@@ -161,6 +173,7 @@ public partial class Board : Node2D
         }
 
         _selectedModelView = null;
+        EmitSignal(SignalName.SelectionChanged);
 
         foreach (var model in _modelInstances)
         {
@@ -188,6 +201,38 @@ public partial class Board : Node2D
         _selectedModelView?.SetSelected(false);
         _selectedModelView = view;
         _selectedModelView.SetSelected(true);
+        EmitSignal(SignalName.SelectionChanged);
+    }
+
+    public (ModelInstance Model, UnitDefinition Unit, string ArmyName)? GetSelectedModelDetails()
+    {
+        if (_selectedModelView is null)
+        {
+            return null;
+        }
+
+        var model = _modelInstances.FirstOrDefault(m => m.Id == _selectedModelView.ModelId);
+        if (model is null ||
+            !_entriesById.TryGetValue(model.ArmyEntryId, out var entry) ||
+            !_unitsById.TryGetValue(entry.UnitDefinitionId, out var unit))
+        {
+            return null;
+        }
+
+        var armyName = _armyNames.TryGetValue(entry.ArmyId, out var name) ? name : "Unknown";
+        return (model, unit, armyName);
+    }
+
+    public async Task RemoveSelectedModel()
+    {
+        if (_selectedModelView is null)
+        {
+            return;
+        }
+
+        var modelId = _selectedModelView.ModelId;
+        await _apiSettings.Client.DeleteAsync($"/api/models/{modelId}");
+        await RefreshModels();
     }
 
     private void ApplyFeatures(List<TerrainFeature> terrain, List<DeploymentZone> zones)
