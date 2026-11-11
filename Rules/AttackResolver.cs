@@ -3,7 +3,14 @@ using WarmachineClient.Api.Dto;
 
 namespace WarmachineClient.Rules;
 
-public record AttackResult(DiceRollResult ToHitRoll, bool Hit, DiceRollResult? DamageRoll, int DamageDealt);
+public record AttackResult(DiceRollResult ToHitRoll, bool Hit, DiceRollResult? DamageRoll, int DamageDealt)
+{
+    /// <summary>
+    /// A doubles damage roll knocks the target down - a simplified stand-in for the real rulebook's
+    /// per-weapon critical-effect text, which isn't modeled as structured data yet.
+    /// </summary>
+    public bool InflictsKnockdown => Hit && (DamageRoll?.IsDoubles ?? false);
+}
 
 public static class AttackResolver
 {

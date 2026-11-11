@@ -40,6 +40,7 @@ public partial class AttackPanel : CanvasLayer
     private Dto.ModelInstance? _pendingTargetModel;
     private Dto.UnitDefinition? _pendingTargetUnit;
     private int _pendingDamageAmount;
+    private bool _pendingInflictsKnockdown;
 
     public override void _Ready()
     {
@@ -291,6 +292,7 @@ public partial class AttackPanel : CanvasLayer
                 _pendingTargetModel = targetModel;
                 _pendingTargetUnit = targetUnit;
                 _pendingDamageAmount = result.DamageDealt;
+                _pendingInflictsKnockdown = result.InflictsKnockdown;
                 _rollColumnButton.Visible = true;
                 _statusLabel.Text = "Hit a warjack/warbeast - roll for damage column.";
 
@@ -298,7 +300,7 @@ public partial class AttackPanel : CanvasLayer
             }
             else
             {
-                await ApplyFlatDamage(targetModel, targetUnit, result.DamageDealt);
+                await ApplyFlatDamage(targetModel, targetUnit, result.DamageDealt, result.InflictsKnockdown);
                 await LogAttack(attackerId, targetId, true, result.DamageDealt, verb, eventType);
             }
         }
@@ -339,25 +341,31 @@ public partial class AttackPanel : CanvasLayer
 
             var chosenIndex = openIndexes[Random.Shared.Next(openIndexes.Count)];
 
-            while (grid.Count <= chosenIndex)
+            while (grid.Count < template.Count)
             {
                 grid.Add(new Dto.DamageColumnState { Name = template[grid.Count].Name, BoxesFilled = 0 });
             }
 
+            ApplyDamageWithRollover(grid, template, chosenIndex, _pendingDamageAmount);
             var column = grid[chosenIndex];
-            column.BoxesFilled = Math.Min(template[chosenIndex].TotalBoxes, column.BoxesFilled + _pendingDamageAmount);
 
             var allDestroyed = grid.Zip(template, (g, t) => g.BoxesFilled >= t.TotalBoxes).All(x => x);
 
             await _apiSettings.Client.PatchAsync($"/api/models/{_pendingTargetModel.Id}/damage-grid", grid);
 
-            if (allDestroyed)
+            if (allDestroyed || _pendingInflictsKnockdown)
             {
+                var statusEffects = _pendingTargetModel.StatusEffects.ToList();
+                if (_pendingInflictsKnockdown && !statusEffects.Contains(Dto.StatusEffect.KnockedDown))
+                {
+                    statusEffects.Add(Dto.StatusEffect.KnockedDown);
+                }
+
                 await _apiSettings.Client.PatchAsync($"/api/models/{_pendingTargetModel.Id}/damage", new
                 {
                     damageTaken = _pendingTargetModel.DamageTaken,
-                    isDestroyed = true,
-                    statusEffects = _pendingTargetModel.StatusEffects
+                    isDestroyed = allDestroyed,
+                    statusEffects
                 });
             }
 
@@ -365,9 +373,12 @@ public partial class AttackPanel : CanvasLayer
                                  $"({column.BoxesFilled}/{template[chosenIndex].TotalBoxes})" +
                                  (allDestroyed ? " - DESTROYED" : string.Empty);
 
+            await LogColumnHit(_pendingTargetModel.Id, template[chosenIndex].Name, column, template[chosenIndex], allDestroyed);
+
             _rollColumnButton.Visible = false;
             _pendingTargetModel = null;
             _pendingTargetUnit = null;
+            _pendingInflictsKnockdown = false;
 
             await _board.RefreshModels();
         }
@@ -377,24 +388,109 @@ public partial class AttackPanel : CanvasLayer
         }
     }
 
-    private async Task ApplyFlatDamage(Dto.ModelInstance targetModel, Dto.UnitDefinition targetUnit, int damage)
+    private static void ApplyDamageWithRollover(
+        List<Dto.DamageColumnState> grid, List<Dto.DamageColumnTemplate> template, int startIndex, int damage)
+    {
+        var remaining = damage;
+        var index = startIndex;
+        var columnsVisited = 0;
+
+        while (remaining > 0 && columnsVisited < template.Count)
+        {
+            var column = grid[index];
+            var capacity = template[index].TotalBoxes - column.BoxesFilled;
+
+            if (capacity > 0)
+            {
+                var applied = Math.Min(capacity, remaining);
+                column.BoxesFilled += applied;
+                remaining -= applied;
+            }
+
+            index = (index + 1) % template.Count;
+            columnsVisited++;
+        }
+    }
+
+    private async Task ApplyFlatDamage(
+        Dto.ModelInstance targetModel, Dto.UnitDefinition targetUnit, int damage, bool inflictsKnockdown)
     {
         var newDamage = targetModel.DamageTaken + damage;
         var destroyed = newDamage >= targetUnit.DamageCapacity;
+
+        var statusEffects = targetModel.StatusEffects.ToList();
+        if (inflictsKnockdown && !statusEffects.Contains(Dto.StatusEffect.KnockedDown))
+        {
+            statusEffects.Add(Dto.StatusEffect.KnockedDown);
+        }
 
         await _apiSettings.Client.PatchAsync($"/api/models/{targetModel.Id}/damage", new
         {
             damageTaken = newDamage,
             isDestroyed = destroyed,
-            statusEffects = targetModel.StatusEffects
+            statusEffects
         });
 
         if (destroyed)
         {
             _statusLabel.Text = "Target destroyed.";
+            await LogDestruction(targetModel.Id);
         }
 
         await _board.RefreshModels();
+    }
+
+    private async Task LogColumnHit(
+        Guid targetId, string columnName, Dto.DamageColumnState column, Dto.DamageColumnTemplate template, bool destroyed)
+    {
+        if (_board.Session is null)
+        {
+            return;
+        }
+
+        var description = $"{_board.GetModelLabel(targetId)}'s {columnName} takes damage " +
+                           $"({column.BoxesFilled}/{template.TotalBoxes})." +
+                           (destroyed ? $" {_board.GetModelLabel(targetId)} is destroyed." : string.Empty);
+
+        try
+        {
+            await _apiSettings.Client.PostAsync<Dto.CombatLogEntry>($"/api/sessions/{_board.Session.Id}/log", new
+            {
+                round = _board.Session.CurrentRound,
+                eventType = destroyed ? Dto.CombatLogEventType.Destroyed : Dto.CombatLogEventType.Damage,
+                actorModelInstanceId = (Guid?)null,
+                targetModelInstanceId = targetId,
+                description
+            });
+        }
+        catch (Exception)
+        {
+            // A logging failure shouldn't hide the result already shown in the panel.
+        }
+    }
+
+    private async Task LogDestruction(Guid targetId)
+    {
+        if (_board.Session is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _apiSettings.Client.PostAsync<Dto.CombatLogEntry>($"/api/sessions/{_board.Session.Id}/log", new
+            {
+                round = _board.Session.CurrentRound,
+                eventType = Dto.CombatLogEventType.Destroyed,
+                actorModelInstanceId = (Guid?)null,
+                targetModelInstanceId = targetId,
+                description = $"{_board.GetModelLabel(targetId)} is destroyed."
+            });
+        }
+        catch (Exception)
+        {
+            // A logging failure shouldn't hide the result already shown in the panel.
+        }
     }
 
     private async Task LogAttack(
