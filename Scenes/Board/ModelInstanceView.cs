@@ -73,7 +73,8 @@ public partial class ModelInstanceView : Node2D
         }
 
         var pixelRadius = _radius * Board.PixelsPerUnit;
-        DrawCircle(Vector2.Zero, pixelRadius, _color);
+        var fillColor = _model.HasActivated ? _color.Lerp(Colors.Gray, 0.6f) : _color;
+        DrawCircle(Vector2.Zero, pixelRadius, fillColor);
         DrawArc(Vector2.Zero, pixelRadius, 0, Mathf.Tau, 32, Colors.Black, 1.5f);
 
         if (_selected)
