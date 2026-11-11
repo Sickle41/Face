@@ -10,6 +10,7 @@ public partial class BoardTestHarness : CanvasLayer
     private LineEdit _mapIdInput = null!;
     private Button _loadButton = null!;
     private Button _spawnModelsButton = null!;
+    private Button _resetModelsButton = null!;
     private Button _measureButton = null!;
     private Button _mainMenuButton = null!;
     private Label _statusLabel = null!;
@@ -21,6 +22,7 @@ public partial class BoardTestHarness : CanvasLayer
         _mapIdInput = GetNode<LineEdit>("Panel/VBoxContainer/MapIdInput");
         _loadButton = GetNode<Button>("Panel/VBoxContainer/LoadButton");
         _spawnModelsButton = GetNode<Button>("Panel/VBoxContainer/SpawnModelsButton");
+        _resetModelsButton = GetNode<Button>("Panel/VBoxContainer/ResetModelsButton");
         _measureButton = GetNode<Button>("Panel/VBoxContainer/MeasureButton");
         _mainMenuButton = GetNode<Button>("Panel/VBoxContainer/MainMenuButton");
         _statusLabel = GetNode<Label>("Panel/VBoxContainer/StatusLabel");
@@ -29,6 +31,7 @@ public partial class BoardTestHarness : CanvasLayer
 
         _loadButton.Pressed += OnLoadButtonPressed;
         _spawnModelsButton.Pressed += () => _ = SpawnModels();
+        _resetModelsButton.Pressed += () => _ = ResetModels();
         _measureButton.Pressed += () => _measuringTool.SetEnabled(_measureButton.ButtonPressed);
         _mainMenuButton.Pressed += () => GetTree().ChangeSceneToFile("res://Scenes/Main/MainMenu.tscn");
 
@@ -89,6 +92,7 @@ public partial class BoardTestHarness : CanvasLayer
             await _board.LoadSession(sessionId);
             _mapIdInput.Text = string.Empty;
             _spawnModelsButton.Visible = true;
+            _resetModelsButton.Visible = true;
             _statusLabel.Text = "Session loaded.";
         }
         catch (Exception ex)
@@ -114,6 +118,26 @@ public partial class BoardTestHarness : CanvasLayer
         finally
         {
             _spawnModelsButton.Disabled = false;
+        }
+    }
+
+    private async Task ResetModels()
+    {
+        _statusLabel.Text = "Resetting...";
+        _resetModelsButton.Disabled = true;
+
+        try
+        {
+            await _board.ResetModels();
+            _statusLabel.Text = "Models reset.";
+        }
+        catch (Exception ex)
+        {
+            _statusLabel.Text = $"Failed: {ex.Message}";
+        }
+        finally
+        {
+            _resetModelsButton.Disabled = false;
         }
     }
 }

@@ -11,7 +11,7 @@ anchor_right = 0.5
 offset_left = -170.0
 offset_top = 16.0
 offset_right = 170.0
-offset_bottom = 230.0
+offset_bottom = 310.0
 grow_horizontal = 2
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Panel"]
@@ -58,9 +58,46 @@ fit_to_longest_item = false
 clip_text = true
 text_overrun_behavior = 3
 
-[node name="MeleeAttackButton" type="Button" parent="Panel/VBoxContainer"]
+[node name="AttackTypeRow" type="HBoxContainer" parent="Panel/VBoxContainer"]
 layout_mode = 2
-text = "Melee Attack"
+
+[node name="AttackTypeLabel" type="Label" parent="Panel/VBoxContainer/AttackTypeRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(70, 0)
+text = "Type:"
+
+[node name="AttackTypeOption" type="OptionButton" parent="Panel/VBoxContainer/AttackTypeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(200, 0)
+fit_to_longest_item = false
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="SpellRow" type="HBoxContainer" parent="Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="SpellLabel" type="Label" parent="Panel/VBoxContainer/SpellRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(70, 0)
+text = "Spell:"
+
+[node name="SpellOption" type="OptionButton" parent="Panel/VBoxContainer/SpellRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(200, 0)
+fit_to_longest_item = false
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="WeaponInfoLabel" type="Label" parent="Panel/VBoxContainer"]
+layout_mode = 2
+autowrap_mode = 3
+text = ""
+
+[node name="AttackButton" type="Button" parent="Panel/VBoxContainer"]
+layout_mode = 2
+text = "Attack"
 
 [node name="ResultLabel" type="Label" parent="Panel/VBoxContainer"]
 layout_mode = 2
