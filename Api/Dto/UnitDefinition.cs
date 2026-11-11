@@ -21,6 +21,15 @@ public class UnitDefinition
     public bool IsCharacter { get; set; }
     public int Allotment { get; set; }
     public List<DamageColumnTemplate> DamageColumns { get; set; } = new();
+
+    public int MeleeWeaponPow { get; set; }
+    public int MeleeWeaponRange { get; set; }
+    public int RangedWeaponPow { get; set; }
+    public int RangedWeaponRange { get; set; }
+    public int RangedWeaponRof { get; set; }
+    public int RangedWeaponAoe { get; set; }
+    public int RangedWeaponBlastPow { get; set; }
+    public bool RangedWeaponIsSpray { get; set; }
 }
 
 public class DamageColumnTemplate
