@@ -7,7 +7,7 @@
 [ext_resource type="PackedScene" path="res://Scenes/Board/ModelInfoPanel.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://Scenes/Board/CombatLogPanel.tscn" id="5"]
 [ext_resource type="PackedScene" path="res://Scenes/Board/RoundControlsPanel.tscn" id="6"]
-[ext_resource type="PackedScene" path="res://Scenes/Board/AttackPanel.tscn" id="8"]
+[ext_resource type="PackedScene" path="res://Scenes/Board/ActivationMenu.tscn" id="8"]
 
 [node name="Board" type="Node2D"]
 script = ExtResource("1")
@@ -84,4 +84,4 @@ autowrap_mode = 3
 
 [node name="RoundControlsPanel" parent="." instance=ExtResource("6")]
 
-[node name="AttackPanel" parent="." instance=ExtResource("8")]
+[node name="ActivationMenu" parent="." instance=ExtResource("8")]
