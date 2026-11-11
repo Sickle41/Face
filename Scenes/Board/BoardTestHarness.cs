@@ -10,21 +10,26 @@ public partial class BoardTestHarness : CanvasLayer
     private LineEdit _mapIdInput = null!;
     private Button _loadButton = null!;
     private Button _spawnModelsButton = null!;
+    private Button _measureButton = null!;
     private Button _mainMenuButton = null!;
     private Label _statusLabel = null!;
     private Board _board = null!;
+    private MeasuringToolOverlay _measuringTool = null!;
 
     public override void _Ready()
     {
         _mapIdInput = GetNode<LineEdit>("Panel/VBoxContainer/MapIdInput");
         _loadButton = GetNode<Button>("Panel/VBoxContainer/LoadButton");
         _spawnModelsButton = GetNode<Button>("Panel/VBoxContainer/SpawnModelsButton");
+        _measureButton = GetNode<Button>("Panel/VBoxContainer/MeasureButton");
         _mainMenuButton = GetNode<Button>("Panel/VBoxContainer/MainMenuButton");
         _statusLabel = GetNode<Label>("Panel/VBoxContainer/StatusLabel");
         _board = GetParent<Board>();
+        _measuringTool = GetNode<MeasuringToolOverlay>("../MeasuringTool");
 
         _loadButton.Pressed += OnLoadButtonPressed;
         _spawnModelsButton.Pressed += () => _ = SpawnModels();
+        _measureButton.Pressed += () => _measuringTool.SetEnabled(_measureButton.ButtonPressed);
         _mainMenuButton.Pressed += () => GetTree().ChangeSceneToFile("res://Scenes/Main/MainMenu.tscn");
 
         CallDeferred(nameof(AutoLoadFromCatalogState));
