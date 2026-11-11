@@ -44,7 +44,7 @@ public partial class ModelInstanceView : Node2D
         _hoverArea.InputEvent += OnHoverAreaInputEvent;
     }
 
-    public void SetModel(ModelInstance model, UnitDefinition unit, Color color)
+    public void SetModel(ModelInstance model, UnitDefinition unit, Color color, string designation)
     {
         _model = model;
         _color = color;
@@ -54,7 +54,7 @@ public partial class ModelInstanceView : Node2D
 
         var pixelRadius = _radius * Board.PixelsPerUnit;
         _hoverCircle.Radius = pixelRadius;
-        _label.Text = unit.Name;
+        _label.Text = $"{unit.Name} {designation}";
         _label.Position = new Vector2(-50f, pixelRadius + 2f);
         QueueRedraw();
     }

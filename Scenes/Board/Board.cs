@@ -46,6 +46,7 @@ public partial class Board : Node2D
     private readonly Dictionary<Guid, Color> _armyColors = new();
     private readonly Dictionary<Guid, string> _armyNames = new();
     private List<ModelInstance> _modelInstances = new();
+    private readonly Dictionary<Guid, string> _modelDesignations = new();
     private List<TerrainFeature> _terrain = new();
     private ModelInstanceView? _selectedModelView;
 
@@ -191,6 +192,7 @@ public partial class Board : Node2D
 
         _modelInstances = await _apiSettings.Client.GetAsync<List<ModelInstance>>(
             $"/api/sessions/{_session.Id}/models");
+        ComputeModelDesignations();
 
         foreach (var child in _models.GetChildren())
         {
@@ -216,7 +218,7 @@ public partial class Board : Node2D
             var color = _armyColors.TryGetValue(entry.ArmyId, out var armyColor) ? armyColor : Colors.Gray;
             var view = ModelInstanceScene.Instantiate<ModelInstanceView>();
             _models.AddChild(view);
-            view.SetModel(model, unit, color);
+            view.SetModel(model, unit, color, GetModelDesignation(model.Id));
             view.Connect(ModelInstanceView.SignalName.Selected, Callable.From<ModelInstanceView>(OnModelViewSelected));
         }
 
@@ -248,6 +250,9 @@ public partial class Board : Node2D
 
     public string GetArmyName(Guid armyId) => _armyNames.TryGetValue(armyId, out var name) ? name : "Unknown";
 
+    public string GetModelDesignation(Guid modelId) =>
+        _modelDesignations.TryGetValue(modelId, out var designation) ? designation : "?";
+
     public string GetModelLabel(Guid modelId)
     {
         var model = _modelInstances.FirstOrDefault(m => m.Id == modelId);
@@ -258,7 +263,35 @@ public partial class Board : Node2D
             return "Unknown";
         }
 
-        return $"{GetArmyName(entry.ArmyId)}: {unit.Name}";
+        return $"{GetArmyName(entry.ArmyId)}: {unit.Name} {GetModelDesignation(modelId)}";
+    }
+
+    private void ComputeModelDesignations()
+    {
+        _modelDesignations.Clear();
+
+        var entryGroups = _entriesById.Values.GroupBy(e => (e.ArmyId, e.UnitDefinitionId));
+
+        foreach (var group in entryGroups)
+        {
+            var orderedEntries = group.OrderBy(e => e.Id).ToList();
+            for (var entryIndex = 0; entryIndex < orderedEntries.Count; entryIndex++)
+            {
+                var entry = orderedEntries[entryIndex];
+                var entryNumber = entryIndex + 1;
+
+                var modelsInEntry = _modelInstances
+                    .Where(m => m.ArmyEntryId == entry.Id)
+                    .OrderBy(m => m.CreatedAt)
+                    .ToList();
+
+                for (var modelIndex = 0; modelIndex < modelsInEntry.Count; modelIndex++)
+                {
+                    var letter = entry.Quantity > 1 ? ((char)('A' + modelIndex)).ToString() : string.Empty;
+                    _modelDesignations[modelsInEntry[modelIndex].Id] = $"{entryNumber}{letter}";
+                }
+            }
+        }
     }
 
     private void OnModelViewSelected(ModelInstanceView view)
