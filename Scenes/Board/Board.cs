@@ -166,7 +166,7 @@ public partial class Board : Node2D
         await RefreshModels();
     }
 
-    private async Task RefreshModels()
+    public async Task RefreshModels()
     {
         if (_session is null)
         {
@@ -255,12 +255,12 @@ public partial class Board : Node2D
 
     public (ModelInstance Model, UnitDefinition Unit, string ArmyName)? GetSelectedModelDetails()
     {
-        if (_selectedModelView is null)
-        {
-            return null;
-        }
+        return _selectedModelView is null ? null : GetModelDetails(_selectedModelView.ModelId);
+    }
 
-        var model = _modelInstances.FirstOrDefault(m => m.Id == _selectedModelView.ModelId);
+    public (ModelInstance Model, UnitDefinition Unit, string ArmyName)? GetModelDetails(Guid modelId)
+    {
+        var model = _modelInstances.FirstOrDefault(m => m.Id == modelId);
         if (model is null ||
             !_entriesById.TryGetValue(model.ArmyEntryId, out var entry) ||
             !_unitsById.TryGetValue(entry.UnitDefinitionId, out var unit))
