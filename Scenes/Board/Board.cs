@@ -166,6 +166,22 @@ public partial class Board : Node2D
         await RefreshModels();
     }
 
+    public async Task ResetModels()
+    {
+        if (_session is null)
+        {
+            return;
+        }
+
+        foreach (var model in _modelInstances.ToList())
+        {
+            await _apiSettings.Client.DeleteAsync($"/api/models/{model.Id}");
+        }
+
+        await RefreshModels();
+        await SpawnMissingModels();
+    }
+
     public async Task RefreshModels()
     {
         if (_session is null)
@@ -186,6 +202,11 @@ public partial class Board : Node2D
 
         foreach (var model in _modelInstances)
         {
+            if (model.IsDestroyed)
+            {
+                continue;
+            }
+
             if (!_entriesById.TryGetValue(model.ArmyEntryId, out var entry) ||
                 !_unitsById.TryGetValue(entry.UnitDefinitionId, out var unit))
             {
