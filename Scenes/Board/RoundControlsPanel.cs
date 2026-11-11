@@ -13,6 +13,8 @@ public partial class RoundControlsPanel : CanvasLayer
     private Label _statusRoundLabel = null!;
     private Button _advanceRoundButton = null!;
     private OptionButton _activeParticipantOption = null!;
+    private VBoxContainer _participantsVpList = null!;
+    private Button _summaryButton = null!;
     private Label _statusLabel = null!;
 
     private Board _board = null!;
@@ -25,6 +27,8 @@ public partial class RoundControlsPanel : CanvasLayer
         _advanceRoundButton = GetNode<Button>("Panel/VBoxContainer/AdvanceRoundButton");
         _activeParticipantOption = GetNode<OptionButton>(
             "Panel/VBoxContainer/ActiveParticipantRow/ActiveParticipantOption");
+        _participantsVpList = GetNode<VBoxContainer>("Panel/VBoxContainer/ParticipantsVpList");
+        _summaryButton = GetNode<Button>("Panel/VBoxContainer/SummaryButton");
         _statusLabel = GetNode<Label>("Panel/VBoxContainer/StatusLabel");
 
         _apiSettings = GetNode<ApiSettings>("/root/ApiSettings");
@@ -32,6 +36,7 @@ public partial class RoundControlsPanel : CanvasLayer
 
         _advanceRoundButton.Pressed += () => _ = AdvanceRound();
         _activeParticipantOption.ItemSelected += index => _ = SetActiveParticipant((int)index);
+        _summaryButton.Pressed += () => GetTree().ChangeSceneToFile("res://Scenes/Session/SessionSummaryView.tscn");
 
         _board.Connect(Board.SignalName.BoardStateChanged, Callable.From(Refresh));
     }
@@ -58,6 +63,28 @@ public partial class RoundControlsPanel : CanvasLayer
             {
                 _activeParticipantOption.Selected = _participantOptionsOrder.Count - 1;
             }
+        }
+
+        foreach (var child in _participantsVpList.GetChildren())
+        {
+            child.QueueFree();
+        }
+
+        foreach (var participant in _board.Participants)
+        {
+            var row = new HBoxContainer();
+            row.AddChild(new Label
+            {
+                Text = $"{_board.GetArmyName(participant.ArmyId)}: {participant.VictoryPoints} VP",
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+            });
+
+            var scoreButton = new Button { Text = "+1 VP" };
+            var participantId = participant.Id;
+            scoreButton.Pressed += () => _ = AddScore(participantId);
+            row.AddChild(scoreButton);
+
+            _participantsVpList.AddChild(row);
         }
     }
 
@@ -117,6 +144,21 @@ public partial class RoundControlsPanel : CanvasLayer
         catch (ApiException ex) when (ex.Status == 409)
         {
             _statusLabel.Text = "Session changed elsewhere - reload and retry.";
+        }
+        catch (Exception ex)
+        {
+            _statusLabel.Text = $"Failed: {ex.Message}";
+        }
+    }
+
+    private async Task AddScore(Guid participantId)
+    {
+        _statusLabel.Text = "Scoring...";
+        try
+        {
+            await _apiSettings.Client.PostAsync($"/api/participants/{participantId}/score", new { points = 1 });
+            await _board.RefreshParticipants();
+            _statusLabel.Text = "Scored.";
         }
         catch (Exception ex)
         {
