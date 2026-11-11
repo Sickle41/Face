@@ -10,6 +10,12 @@ public partial class MeasuringToolOverlay : Node2D
     private bool _hasMeasurement;
     private Vector2 _startPoint;
     private Vector2 _endPoint;
+    private Board _board = null!;
+
+    public override void _Ready()
+    {
+        _board = GetParent<Board>();
+    }
 
     public void SetEnabled(bool enabled)
     {
@@ -58,19 +64,25 @@ public partial class MeasuringToolOverlay : Node2D
             return;
         }
 
-        DrawLine(_startPoint, _endPoint, Colors.Yellow, 2f);
+        var startWorld = _startPoint / Board.PixelsPerUnit;
+        var endWorld = _endPoint / Board.PixelsPerUnit;
+        var clear = LineOfSight.HasClearLineOfSight(startWorld, endWorld, _board.Terrain);
+        var color = clear ? Colors.LightGreen : Colors.OrangeRed;
+
+        DrawLine(_startPoint, _endPoint, color, 2f);
 
         var distanceMm = _startPoint.DistanceTo(_endPoint) / Board.PixelsPerUnit;
         var distanceInches = Units.ToInches(distanceMm);
         var midpoint = (_startPoint + _endPoint) / 2f;
+        var label = clear ? $"{distanceInches:0.0}\"" : $"{distanceInches:0.0}\" (blocked)";
 
         DrawString(
             ThemeDB.GetFallbackFont(),
             midpoint + new Vector2(6, -6),
-            $"{distanceInches:0.0}\"",
+            label,
             HorizontalAlignment.Left,
             -1,
             16,
-            Colors.Yellow);
+            color);
     }
 }

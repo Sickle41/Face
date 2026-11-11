@@ -46,12 +46,14 @@ public partial class Board : Node2D
     private readonly Dictionary<Guid, Color> _armyColors = new();
     private readonly Dictionary<Guid, string> _armyNames = new();
     private List<ModelInstance> _modelInstances = new();
+    private List<TerrainFeature> _terrain = new();
     private ModelInstanceView? _selectedModelView;
 
     public Guid? SelectedModelInstanceId => _selectedModelView?.ModelId;
     public GameSession? Session => _session;
     public IReadOnlyList<GameParticipant> Participants => _participants;
     public IReadOnlyList<ModelInstance> ModelInstances => _modelInstances;
+    public IReadOnlyList<TerrainFeature> Terrain => _terrain;
 
     public override void _Ready()
     {
@@ -69,6 +71,7 @@ public partial class Board : Node2D
 
         var terrain = await _apiSettings.Client.GetAsync<List<TerrainFeature>>($"/api/maps/{mapId}/terrain");
         var zones = await _apiSettings.Client.GetAsync<List<DeploymentZone>>($"/api/maps/{mapId}/deployment-zones");
+        _terrain = terrain;
         ApplyFeatures(terrain, zones);
     }
 
