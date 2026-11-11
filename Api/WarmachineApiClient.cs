@@ -53,6 +53,12 @@ public class WarmachineApiClient
         await EnsureSuccessAsync(response);
     }
 
+    public async Task PostAsync(string path, object body)
+    {
+        using var response = await _http.PostAsync(path, ToJsonContent(body));
+        await EnsureSuccessAsync(response);
+    }
+
     public async Task PutAsync(string path, object body)
     {
         using var response = await _http.PutAsync(path, ToJsonContent(body));

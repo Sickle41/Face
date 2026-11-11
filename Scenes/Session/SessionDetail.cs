@@ -20,6 +20,7 @@ public partial class SessionDetail : Control
     private Control _detailSection = null!;
     private Label _infoLabel = null!;
     private Button _playButton = null!;
+    private Button _summaryButton = null!;
     private Button _resetActivationsButton = null!;
     private ItemList _participantsList = null!;
     private OptionButton _armyOption = null!;
@@ -53,6 +54,7 @@ public partial class SessionDetail : Control
         _detailSection = GetNode<Control>("VBoxContainer/DetailSection");
         _infoLabel = GetNode<Label>("VBoxContainer/DetailSection/InfoLabel");
         _playButton = GetNode<Button>("VBoxContainer/DetailSection/PlayButton");
+        _summaryButton = GetNode<Button>("VBoxContainer/DetailSection/SummaryButton");
         _resetActivationsButton = GetNode<Button>("VBoxContainer/DetailSection/ResetActivationsButton");
         _participantsList = GetNode<ItemList>("VBoxContainer/DetailSection/ParticipantsList");
         _armyOption = GetNode<OptionButton>("VBoxContainer/DetailSection/AddParticipantRow/ArmyOption");
@@ -69,6 +71,7 @@ public partial class SessionDetail : Control
 
         _createButton.Pressed += () => _ = CreateSession();
         _playButton.Pressed += OnPlayPressed;
+        _summaryButton.Pressed += () => GetTree().ChangeSceneToFile("res://Scenes/Session/SessionSummaryView.tscn");
         _resetActivationsButton.Pressed += () => _ = ResetActivations();
         _addParticipantButton.Pressed += () => _ = AddParticipant();
         _removeParticipantButton.Pressed += () => _ = RemoveSelectedParticipant();

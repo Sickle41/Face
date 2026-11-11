@@ -210,6 +210,18 @@ public partial class Board : Node2D
         EmitSignal(SignalName.BoardStateChanged);
     }
 
+    public async Task RefreshParticipants()
+    {
+        if (_session is null)
+        {
+            return;
+        }
+
+        _participants = await _apiSettings.Client.GetAsync<List<GameParticipant>>(
+            $"/api/sessions/{_session.Id}/participants");
+        EmitSignal(SignalName.BoardStateChanged);
+    }
+
     public string GetArmyName(Guid armyId) => _armyNames.TryGetValue(armyId, out var name) ? name : "Unknown";
 
     public string GetModelLabel(Guid modelId)
